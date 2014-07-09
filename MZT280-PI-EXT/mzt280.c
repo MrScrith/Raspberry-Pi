@@ -59,7 +59,7 @@
 #define LCD_SCI_SET bcm2835_gpio_set(SPISCI)
 #define LCD_PWM_SET bcm2835_gpio_set(LCDPWM)
 
-short color[]={0xf800,0x07e0,0x001f,0xffe0,0x0000,0xffff,0x07ff,0xf81f};
+int color[]={0xf800,0x07e0,0x001f,0xffe0,0x0000,0xffff,0x07ff,0xf81f};
 
 /* Image part */
 char *value=NULL;
@@ -121,14 +121,14 @@ void loadFrameBuffer_320x240()
 {
     FILE *infile=fopen("/dev/fb0","rb");
     int  xsize=320, ysize=240;
-    int i,j,k;
+    int i,j;
     int p;
     int r1,g1,b1;
     int r,g,b;
     int drawmap[ysize][xsize];
     int diffmap[ysize][xsize];
     int diffsx, diffsy, diffex, diffey;
-    unsigned long offset=0,t=500;
+    unsigned long offset=0;
     unsigned char *buffer = (unsigned char *) malloc(xsize * ysize * 2);
 
     for(i=0; i< ysize; i++)
@@ -252,141 +252,6 @@ void loadFrameBuffer_320x240()
     }
 }
 
-void loadFrameBuffer_640x480()
-{
-    FILE *infile=fopen("/dev/fb0","rb");
-    int  xsize=640, ysize=480;
-    int i,j,k;
-    int p;
-    int r1,g1,b1;
-    int r,g,b;
-    int drawmap[ysize][xsize];
-    int diffmap[ysize][xsize];
-    int diffsx, diffsy, diffex, diffey;
-    unsigned long offset=0,t=500;
-    unsigned char *buffer = (unsigned char *) malloc(xsize * ysize * 2);
-
-    for(i=0; i< ysize; i++)
-    {
-        for(j=0; j<xsize;j++)
-        {
-            diffmap[i][j] = 1;
-        }
-    }
-    
-    while(1)
-    {
-        fseek(infile, 0, 0);
-    
-        if (fread (buffer, xsize * ysize *2, sizeof(unsigned char), infile) != 1)
-        {
-            printf ("Read < %d chars when loading file %s\n", xsize*ysize*3, "ss");
-            printf ("config.txt framebuffer setting error") ;
-            return;
-        }  
-
-        struct timespec ts1, ts2;
-        long elapsed;
-
-        clock_gettime(CLOCK_MONOTONIC, &ts1);
-
-        diffex  = 0;
-        diffey  = 0;
-        diffsx  = 65535;
-        diffsy  = 65535;
-
-        for (i=0; i < ysize; i++)
-        {
-            for (j=0; j < xsize; j++) 
-            {
-                offset =  (i * xsize+ j)*2;
-                p=(buffer[offset+1] << 8) | buffer[offset];
-                r = (p & RGB565_MASK_RED) >> 11;
-                g = (p & RGB565_MASK_GREEN) >> 5;
-                b = (p & RGB565_MASK_BLUE);
-                
-                r <<= 1;
-                b <<= 1;
-                
-                offset = ( (i+1) * xsize +j )*2;
-                p=(buffer[offset+1] << 8) | buffer[offset];
-                r1 = (p & RGB565_MASK_RED) >> 11;
-                g1 = (p & RGB565_MASK_GREEN) >> 5;
-                b1 = (p & RGB565_MASK_BLUE);
-                
-                r += r1<<1;
-                g += g1;
-                b += b1 <<1;
-              
-                offset = ( i*xsize + j+1)*2;
-                p=(buffer[offset+1] << 8) | buffer[offset];
-                r1 = (p & RGB565_MASK_RED) >> 11;
-                g1 = (p & RGB565_MASK_GREEN) >> 5;
-                b1 = (p & RGB565_MASK_BLUE);
-                
-                r += r1<<1;
-                g += g1;
-                b += b1 <<1;
-                
-                offset=((i+1)*xsize + j+1)*2;
-                p=(buffer[offset+1] << 8) | buffer[offset];
-                r1 = (p & RGB565_MASK_RED) >> 11;
-                g1 = (p & RGB565_MASK_GREEN) >> 5;
-                b1 = (p & RGB565_MASK_BLUE);
-                
-                r += r1<<1;
-                g += g1;
-                b += b1 <<1;
-                
-                p = RGB565(r, g, b);
-            
-                drawmap[i][j] = p;
-  
-                if ((i>>1) < diffsx)
-                    diffsx = i>>1;
-                if ((i>>1) > diffex)
-                    diffex = i >> 1;
-                if ((j>>1)< diffsy)
-                    diffsy=j>>1;
-                if ((j>>1)>diffey)
-                    diffey = j >>1;
-            }
-        }
-
-        LCD_WR_CMD(YS,diffsx); // Column address start2
-        LCD_WR_CMD(YE,diffex); // Column address end2
-        LCD_WR_CMD(XS,diffsy); // Row address start2
-        LCD_WR_CMD(XE,diffey); // Row address end2
-        LCD_WR_REG(0x22);
-        LCD_CS_CLR;
-        LCD_RS_SET;
-
-        for (i=0; i < 240; i++)
-        {
-            for (j=0; j < 320; j++) 
-            {
-                if ( diffmap[i*2][j*2] != drawmap[i*2][j*2])
-                {
-                    write_dot(i,j,drawmap[i*2][j*2]);
-                }
-                diffmap[i*2][j*2] = drawmap[i*2][j*2];
-            }
-        }
-        
-        clock_gettime(CLOCK_MONOTONIC, &ts2);
-        elapsed = ts2.tv_nsec - ts1.tv_nsec;
-        elapsed += (ts2.tv_sec - ts1.tv_sec) * 1000000000;
-
-        if (elapsed < 333333333) 
-        {
-            struct timespec et;
-            et.tv_sec = 0;
-            et.tv_nsec = 333333333 - elapsed;
-            nanosleep(&et, NULL);
-        }
-    }
-}
-
 void LCD_Init()
 {
     LCD_RST_CLR;
@@ -442,6 +307,68 @@ void LCD_Init()
     LCD_WR_CMD(0x0007, 0x0173);        // 262K color and display ON
 }
 
+
+void LCD_test()
+{
+	int temp,num,i;
+	char n;
+    
+	LCD_WR_CMD(XS,0x0000); // Column address start2
+	LCD_WR_CMD(XS+1,0x0000); // Column address start1
+	LCD_WR_CMD(XE,0x0000); // Column address end2
+	LCD_WR_CMD(XE+1,0x00EF); // Column address end1
+	LCD_WR_CMD(YS,0x0000); // Row address start2
+	LCD_WR_CMD(YS+1,0x0000); // Row address start1
+	LCD_WR_CMD(YE,0x0001); // Row address end2
+	LCD_WR_CMD(YE+1,0x003F); // Row address end1
+    
+	LCD_WR_REG(0x22);
+	LCD_CS_CLR;
+	LCD_RS_SET;
+	printf("Running first test loop\n");
+	for(n=0;n<8;n++)
+	{
+	    temp=color[n];
+	    printf("filling with color %X\n",temp);
+		for(num=40*240;num>0;num--)
+		{
+			LCD_WR_Data(temp);
+		}
+	}
+	printf("Running second test loop\n");
+	for(n=0;n<8;n++)
+	{
+		LCD_WR_CMD(XS,0x0000); // Column address start2
+		LCD_WR_CMD(XS+1,0x0000); // Column address start1
+		LCD_WR_CMD(XE,0x0000); // Column address end2
+		LCD_WR_CMD(XE+1,0x00EF); // Column address end1
+		LCD_WR_CMD(YS,0x0000); // Row address start2
+		LCD_WR_CMD(YS+1,0x0000); // Row address start1
+		LCD_WR_CMD(YE,0x0001); // Row address end2
+		LCD_WR_CMD(YE+1,0x003F); // Row address end1
+		
+		LCD_WR_REG(0x22);
+		LCD_CS_CLR;
+		LCD_RS_SET;
+		temp=color[n];
+		printf("filling with color %X\n",temp);
+		for(i=0;i<240;i++)
+		{
+			for(num=0;num<320;num++)
+			{
+				LCD_WR_Data(temp);
+			}
+		}
+		printf("Waiting 3 seconds...\n");
+		struct timespec et;
+		et.tv_sec = 3;
+		et.tv_nsec = 0;
+		nanosleep(&et, NULL);
+	}
+	LCD_CS_SET;
+}
+
+
 int main (void)
 {
     if (!bcm2835_init())
@@ -465,6 +392,8 @@ int main (void)
     printf("Initializing TFT Screen\n");
     
     LCD_Init();
+    printf("Initialization complete\n");
+    printf("Resetting screen\n");
     LCD_WR_CMD(XS, 0x0000); // Column address start2
     LCD_WR_CMD(XE, MAX_X ); // Column address end2
     LCD_WR_CMD(YS, 0x0000); // Row address start2
@@ -473,8 +402,9 @@ int main (void)
     LCD_WR_REG(0x22);
     LCD_CS_CLR;
     LCD_RS_SET;
-
-    loadFrameBuffer_320x240();
+	printf("running LCD Test\n");
+	LCD_test();
+    //loadFrameBuffer_320x240();
     //loadFrameBuffer_640x480();
 
     return 0 ;
