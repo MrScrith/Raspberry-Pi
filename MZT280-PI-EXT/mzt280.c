@@ -59,7 +59,7 @@
 #define LCD_SCI_SET bcm2835_gpio_set(SPISCI)
 #define LCD_PWM_SET bcm2835_gpio_set(LCDPWM)
 
-int color[]={0xf800,0x07e0,0x001f,0xffe0,0x0000,0xffff,0x07ff,0xf81f};
+int color[]={0xf800,0x07e0,0x001f,0xffe0,0xf81f,0xffff,0x07ff,0x0000};
 
 /* Image part */
 char *value=NULL;
@@ -310,62 +310,42 @@ void LCD_Init()
 
 void LCD_test()
 {
-	int temp,num,i;
-	char n;
+    int testColor,testY,testX;
+    char colorIndex;
+    struct timespec waitTime;
+    waitTime.tv_sec = 3;
+    waitTime.tv_nsec = 0;
     
-	LCD_WR_CMD(XS,0x0000); // Column address start2
-	LCD_WR_CMD(XS+1,0x0000); // Column address start1
-	LCD_WR_CMD(XE,0x0000); // Column address end2
-	LCD_WR_CMD(XE+1,0x00EF); // Column address end1
-	LCD_WR_CMD(YS,0x0000); // Row address start2
-	LCD_WR_CMD(YS+1,0x0000); // Row address start1
-	LCD_WR_CMD(YE,0x0001); // Row address end2
-	LCD_WR_CMD(YE+1,0x003F); // Row address end1
-    
-	LCD_WR_REG(0x22);
-	LCD_CS_CLR;
-	LCD_RS_SET;
-	printf("Running first test loop\n");
-	for(n=0;n<8;n++)
-	{
-	    temp=color[n];
-	    printf("filling with color %X\n",temp);
-		for(num=40*240;num>0;num--)
-		{
-			LCD_WR_Data(temp);
-		}
-	}
-	printf("Running second test loop\n");
-	for(n=0;n<8;n++)
-	{
-		LCD_WR_CMD(XS,0x0000); // Column address start2
-		LCD_WR_CMD(XS+1,0x0000); // Column address start1
-		LCD_WR_CMD(XE,0x0000); // Column address end2
-		LCD_WR_CMD(XE+1,0x00EF); // Column address end1
-		LCD_WR_CMD(YS,0x0000); // Row address start2
-		LCD_WR_CMD(YS+1,0x0000); // Row address start1
-		LCD_WR_CMD(YE,0x0001); // Row address end2
-		LCD_WR_CMD(YE+1,0x003F); // Row address end1
-		
-		LCD_WR_REG(0x22);
-		LCD_CS_CLR;
-		LCD_RS_SET;
-		temp=color[n];
-		printf("filling with color %X\n",temp);
-		for(i=0;i<240;i++)
-		{
-			for(num=0;num<320;num++)
-			{
-				LCD_WR_Data(temp);
-			}
-		}
-		printf("Waiting 3 seconds...\n");
-		struct timespec et;
-		et.tv_sec = 3;
-		et.tv_nsec = 0;
-		nanosleep(&et, NULL);
-	}
-	LCD_CS_SET;
+
+    printf("Running test loop\n");
+    for(colorIndex=0;colorIndex<8;colorIndex++)
+    {
+        LCD_WR_CMD(YS,0); // Column address start2
+        LCD_WR_CMD(YE,240); // Column address end2
+        LCD_WR_CMD(XS,0); // Row address start2
+        LCD_WR_CMD(XE,320); // Row address end2
+        
+        LCD_WR_REG(0x22);
+        LCD_CS_CLR;
+        LCD_RS_SET;
+        
+        testColor=color[colorIndex];
+        printf("filling with color %X\n",testColor);
+        for(testY=0;testY<240;testY++)
+        {
+            for(testX=0;testX<320;testX++)
+            {
+                LCD_WR_CMD(XP,testX);
+                LCD_WR_CMD(YP,testY);
+                LCD_WR_CMD(0x22,testColor);
+            }
+        }
+        
+        printf("Waiting 3 seconds...\n");
+        
+        nanosleep(&waitTime, NULL);
+    }
+    LCD_CS_SET;
 }
 
 
