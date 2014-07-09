@@ -1,3 +1,3 @@
 all:
-	gcc -o mzt280 -O3 -l rt mzt280.c bcm2835.c
+	gcc -o lcdTest -O3 -l rt lcdTest.c mzt280.h mzt280.c bcm2835.h bcm2835.c
 
