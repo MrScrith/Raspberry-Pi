@@ -5,38 +5,17 @@
 #include <string.h>
 #include <sys/timeb.h>
 #include <time.h>
+#include "mzt280.h"
 
-#define RGB565(r,g,b)((r >> 3) << 11 | (g >> 2) << 5 | ( b >> 3))
 #define BCM2708SPI
-#define ROTATE90
 
-#define RGB565_MASK_RED      0xF800
-#define RGB565_MASK_GREEN    0x07E0
-#define RGB565_MASK_BLUE     0x001F
+#define XP    0x020
+#define YP    0x021
 
-#ifdef    ROTATE90
-    #define XP    0x021
-    #define YP    0x020
-
-    #define XS    0x052
-    #define XE    0x053
-    #define YS    0x050
-    #define YE    0x051
-
-    #define MAX_X    319
-    #define MAX_Y    239
-#else
-    #define XP    0x020
-    #define YP    0x021
-
-    #define XS    0x050
-    #define XE    0x051
-    #define YS    0x052
-    #define YE    0x053
-
-    #define MAX_X    239
-    #define MAX_Y    319
-#endif
+#define XS    0x050
+#define XE    0x051
+#define YS    0x052
+#define YE    0x053
 
 #define SPICS  RPI_GPIO_P1_24  //GPIO08
 #define SPIRS  RPI_GPIO_P1_22  //GPIO25
@@ -60,10 +39,6 @@
 #define BACKLIGHT_OFF bcm2835_gpio_set(LCDPWM)
 
 int color[]={0xf800,0x07e0,0x001f,0xffe0,0xf81f,0xffff,0x07ff,0x0000};
-
-/* Image part */
-char *value=NULL;
-int hsize=0, vsize=0;
 
 void LCD_WR_REG(int index)
 {
@@ -117,22 +92,23 @@ void writeDot(int dotX,int dotY,int color)
 
     LCD_WR_CMD(XP,dotX); // Column address start
     LCD_WR_CMD(YP,dotY); // Row address start
-        
+
     LCD_WR_CMD(0x22,color);
 }
 
 
 void lcdInit()
 {
+    int index;
     LCD_RST_CLR;
     delay (100);
     LCD_RST_SET;
     delay (100);
-    
+
     LCD_WR_CMD(0x0015, 0x0030);      // Set the internal vcore voltage
     LCD_WR_CMD(0x009A, 0x0010);
 
-    //*************Power On sequence ****************
+    // *************Power On sequence ****************
     LCD_WR_CMD(0x0011, 0x0020);         // DC1[2:0], DC0[2:0], VC[2:0]
     LCD_WR_CMD(0x0010, 0x3428);         // SAP, BT[3:0], AP, DSTB, SLP, STB    
     LCD_WR_CMD(0x0012, 0x0002);         // VREG1OUT voltage
@@ -143,7 +119,7 @@ void lcdInit()
     LCD_WR_CMD(0x0010, 0x3420);         // SAP, BT[3:0], AP, DSTB, SLP, STB    
     LCD_WR_CMD(0x0013, 0x3038);         // VDV[4:0] for VCOM amplitude
     delay (7);
- 
+
     //----------2.8" Gamma  Curve table 2 ----------
     LCD_WR_CMD(0x30, 0x0000);
     LCD_WR_CMD(0x31, 0x0402);
@@ -175,6 +151,21 @@ void lcdInit()
     //-------------- Panel Control -------------------//
 
     LCD_WR_CMD(0x0007, 0x0173);        // 262K color and display ON
+
+    LCD_WR_CMD(YS,0);
+    LCD_WR_CMD(YE,MAX_Y);
+    LCD_WR_CMD(XS,0);
+    LCD_WR_CMD(XE,MAX_X);
+
+    LCD_WR_REG(0x22);
+    LCD_CS_CLR;
+    LCD_RS_SET;
+
+    for(index=0;index<(320*240);index++)
+    {
+        LCD_WR_DATA(0x0000);
+    }
+    LCD_CS_SET;
 }
 
 
@@ -185,20 +176,20 @@ void lcdTest()
     struct timespec waitTime;
     waitTime.tv_sec = 3;
     waitTime.tv_nsec = 0;
-    
+
 
     printf("Running test loop\n");
     for(colorIndex=0;colorIndex<8;colorIndex++)
     {
-        LCD_WR_CMD(YS,0); // Column address start2
-        LCD_WR_CMD(YE,MAX_Y); // Column address end2
-        LCD_WR_CMD(XS,0); // Row address start2
-        LCD_WR_CMD(XE,MAX_X); // Row address end2
-        
+        LCD_WR_CMD(YS,0); // Column address start
+        LCD_WR_CMD(YE,MAX_Y); // Column address end
+        LCD_WR_CMD(XS,0); // Row address start
+        LCD_WR_CMD(XE,MAX_X); // Row address end
+
         LCD_WR_REG(0x22);
         LCD_CS_CLR;
         LCD_RS_SET;
-        
+
         testColor=color[colorIndex];
         printf("filling with color %X\n",testColor);
         for(testY=0;testY<240;testY++)
@@ -208,14 +199,12 @@ void lcdTest()
                 LCD_WR_DATA(testColor);
             }
         }
-        
         LCD_CS_SET;
         printf("Waiting 3 seconds...\n");
-        
+
         nanosleep(&waitTime, NULL);
     }
 }
-
 
 void initSpi (void)
 {
@@ -244,11 +233,65 @@ void resetScreen(void)
 
 int writePart(int startX, int startY, int lenX, int lenY, int *part)
 {
-    return 0;
+    int retval = 0;
+    int index, yIndex, xIndex, sideBet;
+
+    if( (startX+lenX) <= MAX_X && (startY+lenY) <= MAX_Y )
+    {
+        retval = 1;
+
+        LCD_WR_CMD(XS,0);
+        LCD_WR_CMD(XE,MAX_X);
+        LCD_WR_CMD(YS,0);
+        LCD_WR_CMD(YE,MAX_Y);
+
+        LCD_WR_REG(0x22);
+        LCD_CS_CLR;
+        LCD_RS_SET;
+
+        for(xIndex = startX; xIndex < (lenX+startX); xIndex++)
+        {
+            printf("Starting row %d\n",xIndex);
+//            LCD_WR_CMD(XP,xIndex);
+//            LCD_WR_CMD(YP,startY);
+
+            for(yIndex = startY; yIndex < (lenY+startY); yIndex++)
+            {
+                //LCD_WR_DATA(part[index]);
+                writeDot(xIndex,yIndex,part[index]);
+                index++;
+            }
+        }
+/*
+        for(ndex = 0; index < (lenX+lenY); index++)
+        {
+            LCD_WR_DATA(part[index]);
+        }
+*/
+        LCD_CS_SET;
+    }
+
+    return retval;
 }
 
 void writeFrame(int *frame)
 {
-    return;
+    int index;
+
+    LCD_WR_CMD(YS,0);     // Column address start
+    LCD_WR_CMD(YE,MAX_Y); // Column address end
+    LCD_WR_CMD(XS,0);     // Row address start
+    LCD_WR_CMD(XE,MAX_X); // Row address end
+
+    LCD_WR_REG(0x22);
+    LCD_CS_CLR;
+    LCD_RS_SET;
+
+    for(index = 0; index < (MAX_Y*MAX_X); index++)
+    {
+        LCD_WR_DATA(frame[index]);
+    }
+
+    LCD_CS_SET;
 }
 

@@ -11,7 +11,7 @@
  * time).
  */
 
-const char caracters[][13] =
+const char characters[][13] =
 {
     {
         // char 0
@@ -4112,7 +4112,3 @@ const char caracters[][13] =
 };
 
 
-int main()
-{
-    return 0;
-}

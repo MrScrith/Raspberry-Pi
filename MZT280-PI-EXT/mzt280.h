@@ -1,3 +1,7 @@
+#define RGB565(r,g,b)((r>>3)<<11 | (g >> 2) << 5 | (b >> 3))
+#define MAX_X 239
+#define MAX_Y 319
+
 void writeDot(int dotX, int dotY, int color);
 void lcdInit();
 void lcdTest();

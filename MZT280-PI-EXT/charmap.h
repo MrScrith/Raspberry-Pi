@@ -14,4 +14,4 @@
  
 
 
-extern const  char caracters[][13];
+extern const  char characters[][13];
