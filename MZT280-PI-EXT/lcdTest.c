@@ -5,32 +5,6 @@
 #include "mzt280.h"
 #include "charmap.h"
 
-#define RED_V1 0
-#define RED_V2 0x1F
-
-#define GREEN_V1 0
-#define GREEN_V2 0x3F
-
-#define BLUE_V1 0
-#define BLUE_V2 0x1F
-
-#define VALUE_1_X 0
-#define VALUE_1_Y 0
-
-#define VALUE_2_X MAX_X
-#define VALUE_2_Y MAX_Y
-
-int rgbAtPoint(px,py)
-{
-    int redP, greenP, blueP;
-
-    redP = (RED_V2 * (px - VALUE_1_X) + RED_V1 * (VALUE_2_X-px)) / (VALUE_2_X-VALUE_1_X);
-    greenP = (GREEN_V2 * (px - VALUE_1_X) + GREEN_V1 * (VALUE_2_X-px)) / (VALUE_2_X-VALUE_1_X);
-    blueP = (BLUE_V1 * (px - VALUE_1_X) + BLUE_V1 * (VALUE_2_X-px)) / (VALUE_2_X-VALUE_1_X);
-
-    return RGB565(redP,greenP,blueP);
-}
-
 int main(void)
 {
     int lx,ly;
