@@ -40,6 +40,87 @@
 
 int color[]={0xf800,0x07e0,0x001f,0xffe0,0xf81f,0xffff,0x07ff,0x0000};
 
+typedef struct colorCoordStruct_s
+{
+    unsigned int start_x;
+    unsigned int start_y;
+    unsigned int end_x;
+    unsigned int end_y;
+    unsigned char start_value;
+    unsigned char end_value;
+    
+} colorCoordStruct_t;
+
+const colorCoordStruct_t RED = 
+{
+    0,       // Red start is top right corner
+    MAX_Y,
+    MAX_X,   // Red end is bottom left corner
+    0,
+    0x1f,    // Red is 5 bits
+    0
+};
+
+const colorCoordStruct_t GREEN =
+{
+    MAX_X,   // Green start is bottom left corner
+    0,
+    0,       // Green end is top right corner
+    MAX_Y,
+    0x3F,    // Green is 6 bits
+    0
+};
+
+const colorCoordStruct_t BLUE =
+{
+    0,       // Blue start is top left corner
+    0,
+    MAX_X,   // Blue end is bottom right corner
+    MAX_Y,
+    0x1F,    // Blue is 5 bits
+    0
+};
+
+unsigned int pixelPart(colorCoordStruct_t color, unsigned int x, unsigned int y)
+{
+    unsigned int part1, part2;
+    
+    if ( color.start_x < color.end_x )
+    {
+        part1 = ( ( color.start_value * ( x - color.start_x ) ) + ( color.end_value * ( color.end_x - x ))) / MAX_X;
+    }
+    else
+    {
+        part1 = ( ( color.start_value * ( x - color.end_x ) ) + ( color.end_value * ( color.start_x - x ) ) ) / MAX_X;
+        part1 = color.start_value - part1;
+    }
+    
+    if ( color.start_y < color.end_y )
+    {
+        part2 = ( ( color.start_value * ( y - color.start_y ) ) + ( color.end_value * ( color.end_y - y ))) / MAX_Y;
+    }
+    else
+    {
+        part2 = ( ( color.start_value * (  y - color.end_y ) ) + ( color.end_value * ( color.start_y - y ) ) ) / MAX_Y;
+        part2 = color.start_value - part2;
+    }
+    
+    return ( part1 + part2 )/2;
+}
+
+unsigned int pixelValue(unsigned int x, unsigned int y)
+{
+    unsigned int outRed,outGreen,outBlue = 0;
+    
+    outRed = pixelPart(RED,x,y);
+    outGreen = pixelPart(GREEN,x,y);
+    outBlue = pixelPart(BLUE,x,y);
+    
+    return RGB565(outRed,outGreen,outBlue);
+}
+
+
+
 void LCD_WR_REG(int index)
 {
     LCD_CS_CLR;
@@ -204,6 +285,30 @@ void lcdTest()
 
         nanosleep(&waitTime, NULL);
     }
+    
+    printf("Filling with color gradient\n");
+    
+    LCD_WR_CMD(YS,0); // Column address start
+    LCD_WR_CMD(YE,MAX_Y); // Column address end
+    LCD_WR_CMD(XS,0); // Row address start
+    LCD_WR_CMD(XE,MAX_X); // Row address end
+
+    LCD_WR_REG(0x22);
+    LCD_CS_CLR;
+    LCD_RS_SET;
+    
+    for( testY = 0; testY <= MAX_Y; testY ++ )
+    {
+        for( testX = 0; testX <= MAX_X; testX++ )
+        {
+            LCD_WR_DATA(pixelValue(testX,testY));
+        }
+    }
+    
+    LCD_CS_SET;
+    printf("Waiting 3 seconds...\n");
+
+    nanosleep(&waitTime, NULL);
 }
 
 void initSpi (void)
