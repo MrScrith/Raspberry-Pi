@@ -34,26 +34,28 @@ int main(void)
 
     nanosleep(&waitTime,NULL);
 
-    int cell[78];
+    int cell[6*13];
 
     int line1,line2,lindex,lintmp,linchar = 0;
 
     for(line1 = 0; line1 < 13; line1++)
     {
         lintmp = characters[1][line1];
-        printf("line value 0x%X | ",lintmp);
+        printf("line value 0x%0.2X | ",lintmp);
         for(line2 = 0; line2 < 6; line2++)
         {
             if ( lintmp & 0x1 == 1 )
             {
                 cell[lindex] = 0xFFFF;
+                printf("##");
             }
             else
             {
                 cell[lindex] = 0x0000;
+                printf("..");
             }
-            lintmp >> 1;
-            printf("-0x%X",cell[lindex]);
+            lintmp >>= 1;
+            //printf("-0x%X",cell[lindex]);
             lindex++;
         }
         printf("\n");
