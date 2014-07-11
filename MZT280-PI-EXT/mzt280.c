@@ -48,10 +48,9 @@ typedef struct colorCoordStruct_s
     unsigned int end_y;
     unsigned char start_value;
     unsigned char end_value;
-    
 } colorCoordStruct_t;
 
-const colorCoordStruct_t RED = 
+const colorCoordStruct_t RED =
 {
     0,       // Red start is top right corner
     MAX_Y,
@@ -297,14 +296,14 @@ void lcdTest()
     LCD_CS_CLR;
     LCD_RS_SET;
     
-    for( testY = 0; testY <= MAX_Y; testY ++ )
+    for( testX = 0; testX <= MAX_X; testX ++ )
     {
-        for( testX = 0; testX <= MAX_X; testX++ )
+        for( testY = 0; testY <= MAX_Y; testY++ )
         {
             LCD_WR_DATA(pixelValue(testX,testY));
         }
     }
-    
+
     LCD_CS_SET;
     printf("Waiting 3 seconds...\n");
 
